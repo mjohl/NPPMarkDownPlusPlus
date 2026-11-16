@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -17,12 +17,12 @@ namespace com.insanitydesign.MarkdownViewerPlusPlus.Forms
         /// <summary>
         /// 
         /// </summary>
-        protected string msgFileExtensions = "Add a list of comma-separated file extensions (e.g. \'log,txt,html\'). Empty the box for \'All files\'.";
+        protected string msgFileExtensions = "Add a list of comma-separated file extensions (e.g. \'md,markdown,txt\'). Empty the box for \'All files\'.";
 
         /// <summary>
         /// 
         /// </summary>
-        protected string regExFileExtensions = "^([a-zA-Z,]*)$";
+        protected string regExFileExtensions = @"^[a-zA-Z0-9_\-.,;\s]*$";
 
         /// <summary>
         /// 
@@ -77,10 +77,12 @@ namespace com.insanitydesign.MarkdownViewerPlusPlus.Forms
         /// <summary>
         /// 
         /// </summary>
-        public override void SaveOptions(ref Options options)
+        public override void SaveOptions(Options options)
         {
             options.inclNewFiles = this.chkBoxNewFiles.Checked;
-            options.fileExtensions = this.txtFileExtensions.Text;
+            //Normalize e.g. ".md; markdown" to "md,markdown"
+            options.fileExtensions = string.Join(",", ParseFileExtensions(this.txtFileExtensions.Text));
+            options.allowRemoteImages = this.chkBoxRemoteImages.Checked;
         }
 
         /// <summary>
@@ -90,6 +92,7 @@ namespace com.insanitydesign.MarkdownViewerPlusPlus.Forms
         {
             this.chkBoxNewFiles.Checked = options.inclNewFiles;
             this.txtFileExtensions.Text = options.fileExtensions;
+            this.chkBoxRemoteImages.Checked = options.allowRemoteImages;
         }
     }
 }

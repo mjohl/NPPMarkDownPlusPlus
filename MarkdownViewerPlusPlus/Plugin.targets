@@ -1,0 +1,64 @@
+<Project>
+
+  <!-- Post-build steps of the plugin. Imported by the ILRepack.Lib.MSBuild.Task package via $(ILRepackTargetsFile)
+       (which also disables the package's default merge target). -->
+
+  <PropertyGroup>
+    <!-- HtmlRenderer.Core 1.5.1 declares a NuGet dependency on System.Resources.Extensions although none of its
+         assemblies use it; that package and its dependencies are not merged -->
+    <UnusedDependencyPackages>;System.Resources.Extensions;System.Formats.Nrbf;System.Reflection.Metadata;System.Collections.Immutable;Microsoft.Bcl.HashCode;System.ValueTuple;</UnusedDependencyPackages>
+  </PropertyGroup>
+
+  <!-- 1. Merge all dependencies into the plugin assembly -->
+  <Target Name="MergeDependencies" AfterTargets="Build">
+    <ItemGroup>
+      <MergeAssemblies Include="$(TargetPath)" />
+      <!-- Dependencies, without satellite (de\*.resources.dll) assemblies, PdfSharp.Charting and unused packages -->
+      <MergeAssemblies Include="@(ReferenceCopyLocalPaths)"
+                       Condition="'%(Extension)'=='.dll' AND '%(ReferenceCopyLocalPaths.DestinationSubDirectory)'=='' AND '%(Filename)'!='PdfSharp.Charting' AND !$(UnusedDependencyPackages.Contains(';%(ReferenceCopyLocalPaths.NuGetPackageId);'))" />
+    </ItemGroup>
+    <ILRepack Parallel="true" Internalize="false" DebugInfo="false" LibraryPath="$(OutputPath)" TargetPlatformVersion="v4"
+              InputAssemblies="@(MergeAssemblies)" OutputFile="$(TargetPath)" LogFile="$(IntermediateOutputPath)ILRepack.log" />
+    <!-- Remove the now merged dependencies from the output folder -->
+    <Delete Files="@(ReferenceCopyLocalPaths->'$(OutDir)%(DestinationSubDirectory)%(Filename)%(Extension)')" />
+    <!-- The compiler's pdb does not match the merged assembly anymore -->
+    <Delete Files="$(OutDir)$(TargetName).pdb" />
+    <RemoveDir Directories="@(ReferenceCopyLocalPaths->'$(OutDir)%(DestinationSubDirectory)')" Condition="'%(ReferenceCopyLocalPaths.DestinationSubDirectory)'!=''" />
+  </Target>
+
+  <!-- 2. Add the unmanaged exports (isUnicode, setInfo, getFuncsArray, messageProc, getName, beNotified) -->
+  <Target Name="AddUnmanagedExports" AfterTargets="MergeDependencies" Condition="'$(SkipUnmanagedExports)'!='true'">
+    <PropertyGroup>
+      <DllExportScript>$(MSBuildProjectDirectory)\PluginInfrastructure\DllExport\DllExport.ps1</DllExportScript>
+    </PropertyGroup>
+    <Exec Command="powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;$(DllExportScript)&quot; -InputFile &quot;$(TargetPath)&quot; -Platform $(Platform) -SdkPath &quot;$(SDK40ToolsPath.TrimEnd('\'))&quot;"
+          StandardOutputImportance="low" />
+  </Target>
+
+  <!-- 3. Optional deployment: -p:NppPluginsDir="C:\Program Files\Notepad++\plugins" -->
+  <Target Name="DeployToNotepadPlusPlus" AfterTargets="AddUnmanagedExports" Condition="'$(NppPluginsDir)' != ''">
+    <Message Text="Copying $(TargetFileName) to $(NppPluginsDir)\$(AssemblyName)\" Importance="high" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(NppPluginsDir)\$(AssemblyName)\" />
+  </Target>
+
+  <!-- 4. Release zip: <AssemblyName>-<Major.Minor.Build>-<Platform>.zip -->
+  <Target Name="CreateReleaseZip" AfterTargets="AddUnmanagedExports" Condition="'$(Configuration)'=='Release'">
+    <PropertyGroup>
+      <AssemblyInfoText>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\Properties\AssemblyInfo.cs'))</AssemblyInfoText>
+      <ReleaseVersion>$([System.Text.RegularExpressions.Regex]::Match($(AssemblyInfoText), '^\s*\[assembly: AssemblyVersion\(\D*(\d+\.\d+\.\d+)', System.Text.RegularExpressions.RegexOptions.Multiline).Groups[1].Value)</ReleaseVersion>
+      <ReleaseStagingDir>$(IntermediateOutputPath)release\</ReleaseStagingDir>
+      <ReleaseZip>$(MSBuildProjectDirectory)\Releases\$(AssemblyName)-$(ReleaseVersion)-$(Platform).zip</ReleaseZip>
+    </PropertyGroup>
+    <ItemGroup>
+      <ReleaseLicenses Include="$(MSBuildProjectDirectory)\..\license\**" />
+      <ReleaseReadmes Include="$(MSBuildProjectDirectory)\..\*.md" />
+    </ItemGroup>
+    <RemoveDir Directories="$(ReleaseStagingDir)" />
+    <Copy SourceFiles="$(TargetPath);@(ReleaseReadmes)" DestinationFolder="$(ReleaseStagingDir)" />
+    <Copy SourceFiles="@(ReleaseLicenses)" DestinationFiles="@(ReleaseLicenses->'$(ReleaseStagingDir)license\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <MakeDir Directories="$(MSBuildProjectDirectory)\Releases" />
+    <ZipDirectory SourceDirectory="$(ReleaseStagingDir)" DestinationFile="$(ReleaseZip)" Overwrite="true" />
+    <Message Text="Created release zip $(ReleaseZip)" Importance="high" />
+  </Target>
+
+</Project>

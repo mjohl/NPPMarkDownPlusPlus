@@ -1,4 +1,4 @@
-﻿namespace com.insanitydesign.MarkdownViewerPlusPlus.Forms
+namespace com.insanitydesign.MarkdownViewerPlusPlus.Forms
 {
     partial class OptionsPanelGeneral
     {
@@ -34,7 +34,10 @@
             this.toolTipFileExtensions = new System.Windows.Forms.ToolTip(this.components);
             this.grpBoxFiles = new System.Windows.Forms.GroupBox();
             this.txtFileExtensions = new System.Windows.Forms.TextBox();
+            this.grpBoxPrivacy = new System.Windows.Forms.GroupBox();
+            this.chkBoxRemoteImages = new System.Windows.Forms.CheckBox();
             this.grpBoxFiles.SuspendLayout();
+            this.grpBoxPrivacy.SuspendLayout();
             this.SuspendLayout();
             // 
             // lblFileExtensions
@@ -87,16 +90,40 @@
             this.txtFileExtensions.Size = new System.Drawing.Size(1240, 20);
             this.txtFileExtensions.TabIndex = 1;
             // 
+            // grpBoxPrivacy
+            // 
+            this.grpBoxPrivacy.Controls.Add(this.chkBoxRemoteImages);
+            this.grpBoxPrivacy.Dock = System.Windows.Forms.DockStyle.Top;
+            this.grpBoxPrivacy.Location = new System.Drawing.Point(0, 86);
+            this.grpBoxPrivacy.Name = "grpBoxPrivacy";
+            this.grpBoxPrivacy.Size = new System.Drawing.Size(1255, 48);
+            this.grpBoxPrivacy.TabIndex = 4;
+            this.grpBoxPrivacy.TabStop = false;
+            this.grpBoxPrivacy.Text = "Privacy";
+            // 
+            // chkBoxRemoteImages
+            // 
+            this.chkBoxRemoteImages.AutoSize = true;
+            this.chkBoxRemoteImages.Location = new System.Drawing.Point(9, 20);
+            this.chkBoxRemoteImages.Name = "chkBoxRemoteImages";
+            this.chkBoxRemoteImages.Size = new System.Drawing.Size(330, 17);
+            this.chkBoxRemoteImages.TabIndex = 0;
+            this.chkBoxRemoteImages.Text = "Load remote images and stylesheets (http/https) referenced in documents";
+            this.chkBoxRemoteImages.UseVisualStyleBackColor = true;
+            // 
             // OptionsPanelGeneral
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.Controls.Add(this.grpBoxPrivacy);
             this.Controls.Add(this.grpBoxFiles);
             this.Name = "OptionsPanelGeneral";
             this.Size = new System.Drawing.Size(1255, 626);
             this.grpBoxFiles.ResumeLayout(false);
             this.grpBoxFiles.PerformLayout();
+            this.grpBoxPrivacy.ResumeLayout(false);
+            this.grpBoxPrivacy.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -108,5 +135,7 @@
         private System.Windows.Forms.ToolTip toolTipFileExtensions;
         private System.Windows.Forms.GroupBox grpBoxFiles;
         private System.Windows.Forms.TextBox txtFileExtensions;
+        private System.Windows.Forms.GroupBox grpBoxPrivacy;
+        private System.Windows.Forms.CheckBox chkBoxRemoteImages;
     }
 }

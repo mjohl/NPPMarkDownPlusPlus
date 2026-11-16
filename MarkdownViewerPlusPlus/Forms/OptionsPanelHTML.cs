@@ -1,4 +1,4 @@
-﻿using static com.insanitydesign.MarkdownViewerPlusPlus.MarkdownViewerConfiguration;
+using static com.insanitydesign.MarkdownViewerPlusPlus.MarkdownViewerConfiguration;
 /// <summary>
 /// 
 /// </summary>
@@ -23,7 +23,7 @@ namespace com.insanitydesign.MarkdownViewerPlusPlus.Forms
         /// 
         /// </summary>
         /// <param name="options"></param>
-        public override void SaveOptions(ref Options options)
+        public override void SaveOptions(Options options)
         {
             options.HtmlCssStyle = this.txtCssStyles.Text;
             options.htmlOpenExport = this.chkOpenHTMLExport.Checked;

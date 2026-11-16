@@ -1,4 +1,4 @@
-﻿using PdfSharp;
+using PdfSharp;
 using System;
 using System.Linq;
 using static com.insanitydesign.MarkdownViewerPlusPlus.MarkdownViewerConfiguration;
@@ -44,7 +44,7 @@ namespace com.insanitydesign.MarkdownViewerPlusPlus.Forms
         /// 
         /// </summary>
         /// <param name="options"></param>
-        public override void SaveOptions(ref Options options)
+        public override void SaveOptions(Options options)
         {
             PageOrientation pdfOrientation;
             if (Enum.TryParse<PageOrientation>(this.cmbPDFOrientation.SelectedItem.ToString(), out pdfOrientation))

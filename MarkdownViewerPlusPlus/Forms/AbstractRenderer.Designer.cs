@@ -23,6 +23,10 @@ namespace com.insanitydesign.MarkdownViewerPlusPlus.Forms
             {
                 components.Dispose();
             }
+            if (disposing)
+            {
+                DisposeResources();
+            }
             base.Dispose(disposing);
         }
 

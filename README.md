@@ -24,7 +24,7 @@ A Notepad++ Plugin to view a Markdown file rendered on-the-fly
 Download the latest [release here][9]. For a full version history go [here][10].
 
 ## Installation
-Download a [release version][9] and copy the included **MarkdownViewerPlusPlus.dll** to the *plugins* sub-folder at your Notepad++ installation directory. The plugin adds a small Markdown icon ![Markdown icon](https://raw.githubusercontent.com/nea/MarkdownViewerPlusPlus/master/MarkdownViewerPlusPlus/Resources/markdown-16x16-solid.png) to the toolbar to toggle the viewer as dockable panel.
+Download a [release version][9] and copy the included **MarkdownViewerPlusPlus.dll** to a *MarkdownViewerPlusPlus* folder in the *plugins* sub-folder of your Notepad++ installation directory (i.e. *plugins\MarkdownViewerPlusPlus\MarkdownViewerPlusPlus.dll*, as required since Notepad++ 7.6). Use the 64-bit plugin for a 64-bit Notepad++ and the 32-bit plugin for a 32-bit Notepad++. The plugin adds a small Markdown icon ![Markdown icon](https://raw.githubusercontent.com/nea/MarkdownViewerPlusPlus/master/MarkdownViewerPlusPlus/Resources/markdown-16x16-solid.png) to the toolbar to toggle the viewer as dockable panel.
 
 ### Plugin Manager
 If you have the [Plugin Manager][13] installed you can search for MarkdownViewer++ and install it via that plugin.
@@ -33,11 +33,12 @@ If you have the [Plugin Manager][13] installed you can search for MarkdownViewer
 This plugin requires at least
 * Notepad++ 32-bit/64-bit
 * Windows
-* .NET Framework 4.0 or above
+* .NET Framework 4.8 or above (included in all supported Windows versions)
 
 It has been tested under the following conditions
 * Notepad++ 7.5.6 32-bit and 64-bit
-* Windows 10 Professional (64-bit)
+* Notepad++ 8.9.9 64-bit
+* Windows 10 Professional (64-bit), Windows Server 2022
 
 ## Usage
 To open the MarkdownViewer++ you can 
@@ -59,15 +60,29 @@ On the **General** tab you can configure the file extensions the MarkdownViewer+
 
 For example, if you only want to render *txt*, *log* and *md* files just type in "txt,log,md".
 
-Please note that only file extensions are compared and no certain mime types or anything. If a text document is not named *XYZ.txt* it will not be rendered.
+Please note that only file extensions are compared and no certain mime types or anything. If a text document is not named *XYZ.txt* it will not be rendered. Extensions are matched exactly (case-insensitive), separated by commas, semicolons or spaces; a leading dot is ignored.
+
+By default, images and stylesheets referenced from *http/https* sources are **not** loaded, so opening a document does not contact external servers. Enable *Load remote images and stylesheets* in the **Privacy** group to load them. Stylesheets imported by your own *Custom CSS* are always loaded.
 
 #### HTML
-On the **HTML** tab you can fill in *Custom CSS*, which is used when rendering the MarkdownViewer++ preview as well as the exported HTML. Therefore, you are able to e.g. change bullet-point-list icons or sizes of headlines. The custom CSS textbox is limited to 32767 characters.
+On the **HTML** tab you can fill in *Custom CSS*, which is used when rendering the MarkdownViewer++ preview as well as the exported HTML. Therefore, you are able to e.g. change bullet-point-list icons or sizes of headlines. The custom CSS textbox is limited to 32767 characters (multi-line CSS is stored base64 encoded in the configuration file).
 
 #### PDF
 On the **PDF** tab you can set the *orientation* and *page size* of the exported PDF. The content is provided by the [PDFSharp][5] enumerations.
 
 Additionally, the margins for *top*, *right*, *bottom* and *left* can be set for the exported PDF file.
+
+### Printing and E-Mails
+Printing uses the Internet Explorer engine of Windows and sending as HTML e-mail uses Outlook. For both, scripts, embedded objects, event handlers and script URLs are removed from the rendered document first, so raw HTML in a markdown file cannot execute code.
+
+## Building
+Requires Visual Studio 2019 or newer (MSBuild) with the .NET Framework 4.8 developer pack, which includes ildasm.
+
+```powershell
+msbuild MarkdownViewerPlusPlus.sln -restore -p:Configuration=Release -p:Platform=x64   # or x86
+```
+
+After compiling, the build merges all dependencies into the plugin dll (ILRepack), adds the unmanaged exports Notepad++ needs (*PluginInfrastructure\DllExport\DllExport.ps1*) and, for Release builds, creates a zip in *MarkdownViewerPlusPlus\Releases*. Add `-p:NppPluginsDir="C:\Program Files\Notepad++\plugins"` to copy the plugin into a Notepad++ installation.
 
 ### Highlighting
 MarkdownViewer++ adds no markdown highlighting to Notepad++ itself. But you might find the [user-defined syntax highlighting by Edditoria][12] helpful.

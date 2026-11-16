@@ -1,4 +1,4 @@
-﻿// NPP plugin platform for .Net v0.94.00 by Kasper B. Graversen etc.
+// NPP plugin platform for .Net v0.94.00 by Kasper B. Graversen etc.
 //
 // This file should stay in sync with the CPP project file
 // "notepad-plus-plus/PowerEditor/src/MISC/PluginsManager/Notepad_plus_msgs.h"
@@ -167,6 +167,12 @@ namespace Kbg.NppPluginNET.PluginInfrastructure
         ///void WM_ADDTOOLBARICON(UINT funcItem[X]._cmdID, toolbarIcons icon)
         /// </summary>
         NPPM_ADDTOOLBARICON = Constants.NPPMSG + 41,
+
+        /// <summary>
+        /// void NPPM_ADDTOOLBARICON_FORDARKMODE(UINT funcItem[X]._cmdID, toolbarIconsWithDarkMode iconHandles)
+        /// Notepad++ 8.0+: icons for the standard, Fluent light and Fluent dark toolbars
+        /// </summary>
+        NPPM_ADDTOOLBARICON_FORDARKMODE = Constants.NPPMSG + 101,
 
         /// <summary>
         ///winVer NPPM_GETWINDOWSVERSION(0, 0)

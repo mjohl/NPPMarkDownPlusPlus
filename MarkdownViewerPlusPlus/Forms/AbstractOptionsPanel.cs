@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows.Forms;
 using static com.insanitydesign.MarkdownViewerPlusPlus.MarkdownViewerConfiguration;
 
@@ -37,7 +37,7 @@ namespace com.insanitydesign.MarkdownViewerPlusPlus.Forms
         /// Save the made selections/entries of the panel
         /// in the local Options instance.
         /// </summary>
-        public virtual void SaveOptions(ref Options options)
+        public virtual void SaveOptions(Options options)
         {
             throw new NotImplementedException();
         }

@@ -1,4 +1,4 @@
-﻿// NPP plugin platform for .Net v0.94.00 by Kasper B. Graversen etc.
+// NPP plugin platform for .Net v0.94.00 by Kasper B. Graversen etc.
 using System;
 using System.Text;
 using System.Windows.Forms;
@@ -187,5 +187,13 @@ namespace Kbg.NppPluginNET.PluginInfrastructure
     {
         public IntPtr hToolbarBmp;
         public IntPtr hToolbarIcon;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct toolbarIconsWithDarkMode
+    {
+        public IntPtr hToolbarBmp;
+        public IntPtr hToolbarIcon;
+        public IntPtr hToolbarIconDarkMode;
     }
 }

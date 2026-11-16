@@ -1,39 +1,41 @@
-﻿using com.insanitydesign.MarkdownViewerPlusPlus.Forms;
+using com.insanitydesign.MarkdownViewerPlusPlus.Forms;
 using com.insanitydesign.MarkdownViewerPlusPlus.Properties;
 using Kbg.NppPluginNET;
 using Kbg.NppPluginNET.PluginInfrastructure;
 using System;
+using System.Drawing;
 using System.IO;
+using System.Net;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using static com.insanitydesign.MarkdownViewerPlusPlus.MarkdownViewerConfiguration;
 using static Kbg.NppPluginNET.PluginInfrastructure.Win32;
 
 /// <summary>
-/// 
+///
 /// </summary>
 namespace com.insanitydesign.MarkdownViewerPlusPlus
 {
     /// <summary>
-    /// 
+    ///
     /// </summary>
     public class MarkdownViewer
     {
         /// <summary>
-        /// 
+        ///
         /// </summary>
         public struct FileInformation
         {
             /// <summary>
-            /// 
+            ///
             /// </summary>
             public string FileDirectory { get; set; }
             /// <summary>
-            /// 
+            ///
             /// </summary>
             private string fileName;
             /// <summary>
-            /// 
+            ///
             /// </summary>
             public string FileName {
                 get {
@@ -41,72 +43,83 @@ namespace com.insanitydesign.MarkdownViewerPlusPlus
                 }
                 set {
                     this.fileName = value;
-                    this.FileExtension = Path.GetExtension(this.fileName);
-                    this.FileExtension = this.FileExtension.StartsWith(".") ? this.FileExtension.Substring(1, this.FileExtension.Length - 1) : this.FileExtension;
+                    //The extension without the leading dot ("" for none)
+                    string extension = string.IsNullOrEmpty(value) ? "" : Path.GetExtension(value) ?? "";
+                    this.FileExtension = extension.TrimStart('.');
                 }
             }
             /// <summary>
-            /// 
+            ///
             /// </summary>
             public string FileExtension { get; private set; }
         }
 
         /// <summary>
-        /// 
+        /// Delay after the last text change before the document is rendered again
+        /// </summary>
+        public const int RenderDelayMilliseconds = 250;
+
+        /// <summary>
+        ///
         /// </summary>
         public IScintillaGateway Editor { get; protected set; }
         /// <summary>
-        /// 
+        ///
         /// </summary>
         public INotepadPPGateway Notepad { get; protected set; }
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         public FileInformation FileInfo { get; protected set; }
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         protected AbstractRenderer renderer;
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         protected bool rendererVisible = false;
 
         /// <summary>
-        /// 
+        /// True if the text changed since the last render
         /// </summary>
         protected bool updateRenderer = true;
 
         /// <summary>
-        /// 
+        /// Debounces renders while typing
+        /// </summary>
+        protected Timer renderTimer;
+
+        /// <summary>
+        ///
         /// </summary>
         public int commandId = 0;
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         public int commandIdSynchronize = 2;
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         public int commandIdOptions = 4;
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         public int commandIdAbout = 5;
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         protected MarkdownViewerConfiguration configuration;
-        
+
         /// <summary>
-        /// 
+        ///
         /// </summary>
         public Options Options {
             get {
@@ -115,25 +128,27 @@ namespace com.insanitydesign.MarkdownViewerPlusPlus
         }
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         public MarkdownViewer()
         {
             //Get some global references to the editor and Notepad++ engines
             this.Editor = new ScintillaGateway(PluginBase.GetCurrentScintilla());
             this.Notepad = new NotepadPPGateway();
-            //Init the actual renderer
-            this.renderer = new MarkdownViewerRenderer(this);
+            //The renderer (dockable panel) is created on first use, see EnsureRenderer()
+            //Render with a short delay while typing
+            this.renderTimer = new Timer { Interval = RenderDelayMilliseconds };
+            this.renderTimer.Tick += OnRenderTimerTick;
         }
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         /// <param name="notification"></param>
         public void OnNotification(ScNotification notification)
         {
             //Listen to any UI update to get informed about all file changes, chars added/removed etc.
-            if (this.renderer.Visible)
+            if (this.renderer != null && this.renderer.Visible)
             {
                 //Check for updates
                 if (notification.Header.Code == (uint)SciMsg.SCN_UPDATEUI)
@@ -160,18 +175,28 @@ namespace com.insanitydesign.MarkdownViewerPlusPlus
         }
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         /// <param name="updateScrollBar"></param>
-        /// <param name="updateRenderer"></param>
+        /// <param name="updateRenderer">Render immediately (otherwise text changes are rendered after a short delay)</param>
         public void Update(bool updateScrollBar = false, bool updateRenderer = false)
         {
+            //Nothing to update before the viewer has been opened once
+            if (this.renderer == null) return;
             //Validate that the current file may be rendered
             if (this.configuration.ValidateFileExtension(this.FileInfo.FileExtension, this.FileInfo.FileName))
             {
-                //Update the view
-                this.updateRenderer = updateRenderer ? updateRenderer : this.updateRenderer;
-                UpdateMarkdownViewer();
+                if (updateRenderer)
+                {
+                    this.updateRenderer = true;
+                    UpdateMarkdownViewer();
+                }
+                else if (this.updateRenderer)
+                {
+                    //Text changed: (re)start the delay, rendering happens once typing pauses
+                    this.renderTimer.Stop();
+                    this.renderTimer.Start();
+                }
                 //Update the scroll bar of the Viewer Panel only in case of vertical scrolls
                 if (this.configuration.options.synchronizeScrolling && updateScrollBar)
                 {
@@ -180,19 +205,38 @@ namespace com.insanitydesign.MarkdownViewerPlusPlus
             }
             else
             {
+                this.renderTimer.Stop();
                 this.renderer.Render($@"<p>
 Your configuration settings do not include the currently selected file extension.<br />
-The rendered file extensions are <b>'{this.configuration.options.fileExtensions}'</b>.<br />
-The current file is <i>'{this.FileInfo.FileName}'</i>.
+The rendered file extensions are <b>'{WebUtility.HtmlEncode(this.configuration.options.fileExtensions)}'</b>.<br />
+The current file is <i>'{WebUtility.HtmlEncode(this.FileInfo.FileName)}'</i>.
                 </p>", this.FileInfo);
             }
         }
 
         /// <summary>
-        /// 
+        /// Renders the changes made while typing
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void OnRenderTimerTick(object sender, EventArgs e)
+        {
+            this.renderTimer.Stop();
+            if (this.renderer == null || !this.renderer.Visible) return;
+            UpdateMarkdownViewer();
+            //Re-rendering resets the viewer's scroll position
+            if (this.configuration.options.synchronizeScrolling)
+            {
+                UpdateScrollBar();
+            }
+        }
+
+        /// <summary>
+        ///
         /// </summary>
         protected void UpdateScrollBar()
         {
+            if (this.renderer == null) return;
             try
             {
                 ScrollInfo scrollInfo = this.Editor.GetScrollInfo(ScrollInfoMask.SIF_RANGE | ScrollInfoMask.SIF_TRACKPOS | ScrollInfoMask.SIF_PAGE, ScrollInfoBar.SB_VERT);
@@ -212,13 +256,15 @@ The current file is <i>'{this.FileInfo.FileName}'</i>.
                     scrollRatio = scrollInfo.nTrackPos / (totalRange - scrollInfo.nPage);
                 }
 
-                this.renderer.ScrollByRatioVertically(scrollRatio);
+                //Guard against divisions by zero for short documents
+                if (double.IsNaN(scrollRatio) || double.IsInfinity(scrollRatio)) scrollRatio = 0;
+                this.renderer.ScrollByRatioVertically(Math.Max(0, Math.Min(1, scrollRatio)));
             }
-            catch { }            
+            catch { }
         }
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         public void CommandMenuInit()
         {
@@ -239,11 +285,11 @@ The current file is <i>'{this.FileInfo.FileName}'</i>.
         }
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         public void OptionsCommand()
         {
-            using (MarkdownViewerOptions options = new MarkdownViewerOptions(ref this.configuration))
+            using (MarkdownViewerOptions options = new MarkdownViewerOptions(this.configuration))
             {
                 if (options.ShowDialog(Control.FromHandle(PluginBase.GetCurrentScintilla())) == DialogResult.OK)
                 {
@@ -278,23 +324,89 @@ The current file is <i>'{this.FileInfo.FileName}'</i>.
         }
 
         /// <summary>
-        /// 
+        /// Adds the toolbar icon, with separate icons for the Fluent light and dark mode toolbars (Notepad++ 8+).
+        /// The handles are used by Notepad++ for its whole lifetime and therefore not released.
         /// </summary>
         public void SetToolBarIcon()
         {
+            Bitmap icon = Resources.markdown_16x16_solid;
+            int commandId = PluginBase._funcItems.Items[this.commandId]._cmdID;
+
+            toolbarIconsWithDarkMode darkModeIcons = new toolbarIconsWithDarkMode();
+            darkModeIcons.hToolbarBmp = icon.GetHbitmap();
+            darkModeIcons.hToolbarIcon = icon.GetHicon();
+            using (Bitmap darkModeIcon = Recolor(icon, Color.FromArgb(0xE0, 0xE0, 0xE0)))
+            {
+                darkModeIcons.hToolbarIconDarkMode = darkModeIcon.GetHicon();
+            }
+
+            IntPtr pTbIcons = Marshal.AllocHGlobal(Marshal.SizeOf(darkModeIcons));
+            try
+            {
+                Marshal.StructureToPtr(darkModeIcons, pTbIcons, false);
+                IntPtr added = Win32.SendMessage(PluginBase.nppData._nppHandle, (uint)NppMsg.NPPM_ADDTOOLBARICON_FORDARKMODE, commandId, pTbIcons);
+                if (added != IntPtr.Zero) return;
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(pTbIcons);
+            }
+
+            //Notepad++ < 8.0
             toolbarIcons toolbarIcons = new toolbarIcons();
-            toolbarIcons.hToolbarBmp = Resources.markdown_16x16_solid.GetHbitmap();
-            IntPtr pTbIcons = Marshal.AllocHGlobal(Marshal.SizeOf(toolbarIcons));
-            Marshal.StructureToPtr(toolbarIcons, pTbIcons, false);
-            Win32.SendMessage(PluginBase.nppData._nppHandle, (uint)NppMsg.NPPM_ADDTOOLBARICON, PluginBase._funcItems.Items[this.commandId]._cmdID, pTbIcons);
-            Marshal.FreeHGlobal(pTbIcons);
+            toolbarIcons.hToolbarBmp = darkModeIcons.hToolbarBmp;
+            toolbarIcons.hToolbarIcon = darkModeIcons.hToolbarIcon;
+            pTbIcons = Marshal.AllocHGlobal(Marshal.SizeOf(toolbarIcons));
+            try
+            {
+                Marshal.StructureToPtr(toolbarIcons, pTbIcons, false);
+                Win32.SendMessage(PluginBase.nppData._nppHandle, (uint)NppMsg.NPPM_ADDTOOLBARICON, commandId, pTbIcons);
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(pTbIcons);
+            }
         }
 
         /// <summary>
-        /// 
+        ///
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="color"></param>
+        /// <returns>A copy of the image with all pixels in the given color, keeping the transparency</returns>
+        protected static Bitmap Recolor(Bitmap source, Color color)
+        {
+            Bitmap recolored = new Bitmap(source.Width, source.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            for (int x = 0; x < source.Width; x++)
+            {
+                for (int y = 0; y < source.Height; y++)
+                {
+                    recolored.SetPixel(x, y, Color.FromArgb(source.GetPixel(x, y).A, color));
+                }
+            }
+            return recolored;
+        }
+
+        /// <summary>
+        /// Creates the viewer panel. Notepad++ loads plugins before its docking manager exists, so the dockable
+        /// panel must not be registered during plugin initialization (it would be ignored) but on first use.
+        /// </summary>
+        /// <returns></returns>
+        protected AbstractRenderer EnsureRenderer()
+        {
+            if (this.renderer == null)
+            {
+                this.renderer = new MarkdownViewerRenderer(this);
+            }
+            return this.renderer;
+        }
+
+        /// <summary>
+        ///
         /// </summary>
         public void MarkdownViewerCommand()
         {
+            EnsureRenderer();
             bool visibility = !this.renderer.Visible;
             ToggleToolbarIcon(visibility);
             //Show
@@ -303,11 +415,15 @@ The current file is <i>'{this.FileInfo.FileName}'</i>.
                 UpdateEditorInformation();
                 Update(true, true);
                 Editor.SetFocus(true);
-            }            
+            }
+            else
+            {
+                this.renderTimer.Stop();
+            }
         }
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         protected void UpdateEditorInformation()
         {
@@ -319,7 +435,7 @@ The current file is <i>'{this.FileInfo.FileName}'</i>.
         }
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         /// <param name="show"></param>
         /// <returns></returns>
@@ -335,10 +451,11 @@ The current file is <i>'{this.FileInfo.FileName}'</i>.
         }
 
         /// <summary>
-        /// 
+        /// Renders the current text if it changed
         /// </summary>
         protected void UpdateMarkdownViewer()
         {
+            this.renderTimer.Stop();
             try
             {
                 if (this.updateRenderer)
@@ -358,6 +475,7 @@ The current file is <i>'{this.FileInfo.FileName}'</i>.
         /// </summary>
         public void PluginCleanUp()
         {
+            this.renderTimer.Stop();
             this.configuration.Save();
         }
     }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
@@ -28,7 +28,7 @@ namespace com.insanitydesign.MarkdownViewerPlusPlus.Forms
         /// 
         /// </summary>
         /// <param name="options"></param>
-        protected delegate void SaveHandler(ref Options options);
+        protected delegate void SaveHandler(Options options);
 
         /// <summary>
         /// 
@@ -49,7 +49,7 @@ namespace com.insanitydesign.MarkdownViewerPlusPlus.Forms
         /// <summary>
         /// 
         /// </summary>
-        public MarkdownViewerOptions(ref MarkdownViewerConfiguration configuration)
+        public MarkdownViewerOptions(MarkdownViewerConfiguration configuration)
         {
             //
             this.configuration = configuration;
@@ -101,7 +101,7 @@ namespace com.insanitydesign.MarkdownViewerPlusPlus.Forms
         /// <param name="e"></param>
         private void btnOptionsCancel_Click(object sender, System.EventArgs e)
         {
-            this.Dispose();
+            //The DialogResult of the button closes the dialog
         }
 
         /// <summary>
@@ -112,11 +112,10 @@ namespace com.insanitydesign.MarkdownViewerPlusPlus.Forms
         private void btnOptionsSave_Click(object sender, System.EventArgs e)
         {
             //Fire the save event for all listeners
-            this.SaveEvent(ref this.configuration.options);
+            this.SaveEvent(this.configuration.options);
             //Save to init
             this.configuration.Save();            
-            //Close the options dialog when all has been done
-            this.Dispose();
+            //The DialogResult of the button closes the dialog
         }
     }
 }

@@ -1,15 +1,16 @@
-version: 0.8.0.{build}
+version: 0.8.2.{build}
 
-before_build:
-  - ps: nuget restore
+image: Visual Studio 2022
 
 platform:
   - x86
   - x64
 
 configuration:
-    - Debug
+  - Release
 
-build:
-  parallel: true
-  verbosity: minimal
+build_script:
+  - msbuild MarkdownViewerPlusPlus.sln -restore -m -verbosity:minimal -p:Configuration=%CONFIGURATION% -p:Platform=%PLATFORM%
+
+artifacts:
+  - path: MarkdownViewerPlusPlus\Releases\*.zip
